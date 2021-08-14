@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      body { display: flex; flex-direction: column; align-items: center; margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+      .formChat { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+      #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+      #input:focus { outline: none; }
+      #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+
+      .messages { list-style-type: none; margin: 0; padding: 0;width: 100%;height: 70%;font-size: 10px;overflow-y: auto;}
+      .messages > li { padding: 0.5rem 1rem; }
+      .messages > li:nth-child(odd) { background: #efefef; }
+      .chats {display:inline-grid; grid-template-columns: repeat(3,3fr);}
+      h3 {width: 800px;}
+      .chatBox {position: relative;border: 1px solid black;width: 250px;height: 300px;margin: 10px;padding: 0;}
+      .message {position: absolute;left: 0;bottom: 30px;width: 70%;height: 25px;border: 1px solid #ccc;border-radius: 4px;outline: none;}
+      .send {position: absolute;right: 0;bottom: 30px;width: 26%;height: 30px;background-color:#1E90FF;border: none;border-radius: 4px;color: white;padding: 5px 8px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;}
+      .joinRoom {position: absolute;right: 0;bottom: 0px;width: 26%;height: 30px;background-color: #4CAF50;border: none;border-radius: 4px;color: white;padding: 5px 8px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;}
+      .agentName {position: absolute;left: 0;bottom: 0px;width: 70%;height: 25px;border: 1px solid #ccc;border-radius: 4px;outline: none;}
+      .typing {font-size: 12px;position: absolute;right: 5px;}
+    </style>
+  </head>
+  <body>
+    <div>
+      <h3>This page is provided to test your chat box with real time dashboard.Run your chat on several browser tabs. This will create agent dashboards for each chat box. Type your agent name and press join button.</h3>
+         <div class="chatBox">
+         <ul class="messages"></ul>
+         <input class = 'agentName' type="text" placeholder="agent name">
+         <button class = 'joinRoom'>Join</button>
+         <div class="typing"></div>
+         <form class="chatForm" action="">
+         <input class="message" placeholder = 'message' type="text">
+         <button class = 'send'>Send</button>
+         <input value class = 'hidden'  type="hidden" name="">
+       </form>
+     </div>
+   
+    </div>
+    <h4>Online Chat Sessions</h4>
+    <div class="chats"></div>
+   
+    <script src="/socket.io/socket.io.js"></script>
+
+  
+    <script>
+      var socket = io('');
+
+      var chats = document.querySelector('.chats');
+
+      socket.on('chat message', function(msg) {
+        var messages = document.getElementById(msg.toRoom).querySelector('.messages')
+        var item = document.createElement('li');
+        var time = document.createElement('li');
+        item.textContent = `${msg.message} ${msg.time}`
+        messages.appendChild(item);
+        messages.scrollTo(0, document.body.scrollHeight);
+       
+      });
+
+      socket.on('new customer', id => {
+
+        chats.insertAdjacentHTML('beforeend', `<div class="chatBox" id = ${id}>
+       <ul class="messages"></ul>
+       <input class = 'agentName' type="text" placeholder="agent name">
+        <button class = 'joinRoom'>Join</button>
+      <div class="typing"></div>
+      <form class="chatForm" action="">
+        <input class="message" placeholder = 'message' type="text">
+        <button class = 'send'>Send</button>
+        <input value = ${id} class = 'hidden'  type="hidden" name="">
+      </form>
+    </div>`)
+
+    
+    let  roomId = document.getElementById(id).querySelector('.hidden').value
+    let  input = document.getElementById(id).querySelector('.message')
+    let  form = document.getElementById(id).querySelector('.chatForm')
+    let  joinRoomBtn = document.getElementById(id).querySelector('.joinRoom')
+    let  agentName = document.getElementById(id).querySelector('.agentName')
+
+
+        joinRoomBtn.addEventListener('click', () => {
+          socket.emit('agent join',{toRoom:roomId, status:true, name:agentName.value})
+      
+        })
+
+        form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        let msgTime = new Date()
+        if (input.value) {
+          socket.emit('chat message', {message:input.value, id:'agent', toRoom: roomId, time: msgTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12:false})});
+            input.value = ''
+        }
+      });
+
+      input.addEventListener('input', (e) => {
+        socket.emit('typing', {state: true, id:id} )
+        
+      })
+      input.addEventListener('keyup', (e) => {
+        
+        let stoppedTyping = null
+        
+        window.clearTimeout(stoppedTyping)
+       stoppedTyping =  window.setTimeout(() => {
+        socket.emit('typing', {state:false, id:id})
+        }, 1500);   
+
+      })
+      })
+
+      socket.on('typing', function(data) {
+        let value = ''
+        data.state ? value = '...typing' : value = ''
+           document.getElementById(data.id).querySelector('.typing').innerHTML = value
+        });
+
+
+
+    </script>
+  </body>
+</html>
